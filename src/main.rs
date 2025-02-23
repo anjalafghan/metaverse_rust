@@ -1,12 +1,17 @@
+use axum::middleware;
 use axum::{Router, routing::post};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
+mod auth_middleware;
 mod common;
+mod user;
+use auth_middleware::auth_middleware;
 use common::signin;
 use common::signup;
 use tracing::{Level, info};
 use tracing_subscriber::FmtSubscriber;
+use user::metadata;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -35,10 +40,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let common_routes = Router::new()
         .route("/signin", post(signin))
         .route("/signup", post(signup))
+        // .route("/avatars", get(get_avatars))
         .with_state(pool.clone());
 
-    let api_routes = Router::new().nest("/common", common_routes);
-    // .nest("/user", user_routes)
+    let user_routes = Router::new()
+        .route("/metadata", post(metadata))
+        .layer(middleware::from_fn(auth_middleware))
+        // .route("/metadata/bulk", get(metadata_bulk))
+        .with_state(pool.clone());
+
+    let api_routes = Router::new()
+        .nest("/common", common_routes)
+        .nest("/user", user_routes);
     // .nest("/space", space_routes)
     // .nest("/admin", admin_routes)
 

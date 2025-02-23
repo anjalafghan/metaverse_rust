@@ -104,3 +104,10 @@ pub async fn signup(
         }
     }
 }
+
+// pub async fn get_avatars(
+//     State(pool): State<Arc<sqlx::PgPool>>,
+// ) -> Result<Json<_>, StatusCode> {
+//     let response = sqlx::query("SELECT ")
+//     Ok(StatusCode::BAD_REQUEST)
+// }
