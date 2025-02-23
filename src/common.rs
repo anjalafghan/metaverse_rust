@@ -3,9 +3,9 @@ use chrono::{Duration, Utc};
 use dotenv::dotenv;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{env, sync::Arc};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 #[derive(Debug, Deserialize)]
 pub struct SignInPayload {

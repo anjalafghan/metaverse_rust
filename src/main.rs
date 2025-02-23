@@ -1,8 +1,7 @@
-use axum::{Router, routing::get, routing::post};
+use axum::{Router, routing::post};
 use dotenv::dotenv;
-use sqlx::postgres::{PgPoolOptions, PgRow};
+use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
-use tracing::Subscriber;
 mod common;
 use common::signin;
 use common::signup;
