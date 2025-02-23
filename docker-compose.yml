@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16 # Use a fixed version for stability
+    container_name: metaverse_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: anjal
+      POSTGRES_PASSWORD: dbpass
+      POSTGRES_DB: metaverse_postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "anjal"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  postgres_data:
