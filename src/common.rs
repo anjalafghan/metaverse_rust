@@ -13,6 +13,11 @@ pub struct SignInPayload {
     password: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct SignInResponse {
+    token: String,
+}
+
 #[derive(Deserialize)]
 pub struct SignUpPayload {
     username: String,
@@ -30,7 +35,7 @@ struct Claims {
 pub async fn signin(
     State(pool): State<Arc<sqlx::PgPool>>,
     Json(payload): Json<SignInPayload>,
-) -> Result<Json<String>, StatusCode> {
+) -> Result<Json<SignInResponse>, StatusCode> {
     let response = sqlx::query!(
         "SELECT username, password FROM users WHERE username=$1",
         payload.username
@@ -41,14 +46,11 @@ pub async fn signin(
     match response {
         Ok(record) => {
             if record.username == payload.username && record.password == payload.password {
-                static SECRET_KEY: Lazy<&'static [u8]> = Lazy::new(|| {
+                static SECRET_KEY: Lazy<Vec<u8>> = Lazy::new(|| {
                     dotenv().ok();
-                    Box::leak(
-                        env::var("SECRET_KEY_JWT")
-                            .expect("Error in getting secret key")
-                            .into_bytes()
-                            .into_boxed_slice(),
-                    )
+                    env::var("SECRET_KEY_JWT")
+                        .expect("Error in getting secret key")
+                        .into_bytes()
                 });
 
                 let expiration = Utc::now() + Duration::hours(24);
@@ -59,10 +61,11 @@ pub async fn signin(
                 let token = encode(
                     &Header::default(),
                     &claims,
-                    &EncodingKey::from_secret(*SECRET_KEY),
+                    &EncodingKey::from_secret(&*SECRET_KEY),
                 )
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-                Ok(Json(token))
+
+                Ok(Json(SignInResponse { token }))
             } else {
                 Err(StatusCode::UNAUTHORIZED)
             }
