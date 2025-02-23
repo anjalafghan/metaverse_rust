@@ -1,6 +1,10 @@
 use axum::{Json, extract::State, http::StatusCode};
+use chrono::{Duration, Utc};
+use dotenv::dotenv;
+use jsonwebtoken::{EncodingKey, Header, encode};
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{env, sync::Arc};
 use tracing::{error, info, warn};
 
 #[derive(Debug, Deserialize)]
@@ -17,6 +21,12 @@ pub struct SignUpPayload {
     role: String,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+struct Claims {
+    sub: String,
+    exp: usize,
+}
+
 pub async fn signin(
     State(pool): State<Arc<sqlx::PgPool>>,
     Json(payload): Json<SignInPayload>,
@@ -31,7 +41,28 @@ pub async fn signin(
     match response {
         Ok(record) => {
             if record.username == payload.username && record.password == payload.password {
-                Ok(Json("1011".to_string()))
+                static SECRET_KEY: Lazy<&'static [u8]> = Lazy::new(|| {
+                    dotenv().ok();
+                    Box::leak(
+                        env::var("SECRET_KEY_JWT")
+                            .expect("Error in getting secret key")
+                            .into_bytes()
+                            .into_boxed_slice(),
+                    )
+                });
+
+                let expiration = Utc::now() + Duration::hours(24);
+                let claims = Claims {
+                    sub: record.username,
+                    exp: expiration.timestamp() as usize,
+                };
+                let token = encode(
+                    &Header::default(),
+                    &claims,
+                    &EncodingKey::from_secret(*SECRET_KEY),
+                )
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                Ok(Json(token))
             } else {
                 Err(StatusCode::UNAUTHORIZED)
             }
