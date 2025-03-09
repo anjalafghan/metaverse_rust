@@ -4,6 +4,7 @@ use dotenv::dotenv;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
+use sqlx::Row;
 use std::{env, sync::Arc};
 use tracing::{error, info};
 
@@ -18,12 +19,19 @@ pub struct SignInResponse {
     token: String,
 }
 
+#[derive(sqlx::Type, serde::Serialize, serde::Deserialize, Debug)]
+#[sqlx(type_name = "role_enum", rename_all = "lowercase")]
+pub enum Role {
+    User,
+    Admin,
+}
+
 #[derive(Deserialize)]
 pub struct SignUpPayload {
     username: String,
     password: String,
-    avatar_id: i32,
-    role: String,
+    avatar_id: Option<i32>,
+    role: Role,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -37,7 +45,7 @@ pub async fn signin(
     Json(payload): Json<SignInPayload>,
 ) -> Result<Json<SignInResponse>, StatusCode> {
     let response = sqlx::query!(
-        "SELECT username, password FROM users WHERE username=$1",
+        "SELECT id, username, password FROM users WHERE username = $1",
         payload.username
     )
     .fetch_one(&*pool)
@@ -55,7 +63,7 @@ pub async fn signin(
 
                 let expiration = Utc::now() + Duration::hours(24);
                 let claims = Claims {
-                    sub: record.username,
+                    sub: record.id.to_string(),
                     exp: expiration.timestamp() as usize,
                 };
                 let token = encode(
@@ -82,13 +90,22 @@ pub async fn signup(
     Json(payload): Json<SignUpPayload>,
 ) -> Result<StatusCode, StatusCode> {
     info!("User attempting to sign in: {}", payload.username);
-    let response = sqlx::query!(
-        "INSERT INTO users (username, password, avatar_id, role) VALUES ($1, $2, $3, $4)",
-        payload.username,
-        payload.password,
-        payload.avatar_id,
-        payload.role
+    let role_str = match payload.role {
+        Role::User => "User",
+        Role::Admin => "Admin",
+    };
+    info!(
+        "Inserting user: username={}, password={}, avatar_id={:?}, role={}",
+        payload.username, payload.password, payload.avatar_id, role_str
+    );
+
+    let response = sqlx::query(
+        "INSERT INTO users (username, password, avatar_id, role) VALUES ($1, $2, $3, $4::role_enum)",
     )
+    .bind(&payload.username)
+    .bind(&payload.password)
+    .bind(payload.avatar_id)
+    .bind(role_str)
     .execute(&*pool)
     .await;
 
@@ -105,9 +122,41 @@ pub async fn signup(
     }
 }
 
-// pub async fn get_avatars(
-//     State(pool): State<Arc<sqlx::PgPool>>,
-// ) -> Result<Json<_>, StatusCode> {
-//     let response = sqlx::query("SELECT ")
-//     Ok(StatusCode::BAD_REQUEST)
-// }
+#[derive(serde::Deserialize, serde::Serialize)]
+struct AvatarPayload {
+    id: i32,
+    name: String,
+    image_url: String,
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct AvatarResponseBody {
+    avatars: Vec<AvatarPayload>,
+}
+
+pub async fn get_avatars(
+    State(pool): State<Arc<sqlx::PgPool>>,
+) -> Result<Json<AvatarResponseBody>, StatusCode> {
+    let response = sqlx::query("SELECT id, name, image_url FROM avatars")
+        .fetch_all(&*pool)
+        .await;
+
+    match response {
+        Ok(rows) => {
+            let avatars: Vec<AvatarPayload> = rows
+                .into_iter()
+                .map(|row| AvatarPayload {
+                    id: row.get("id"),
+                    name: row.get("name"),
+                    image_url: row.get("image_url"),
+                })
+                .collect();
+
+            Ok(Json(AvatarResponseBody { avatars: avatars }))
+        }
+        Err(e) => {
+            error!("Something went wrong {}", e);
+            Err(StatusCode::BAD_REQUEST)
+        }
+    }
+}

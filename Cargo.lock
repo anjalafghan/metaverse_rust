@@ -1006,8 +1006,10 @@ name = "metaverse_v1"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "bytes",
  "chrono",
  "dotenv",
+ "http-body-util",
  "hyper",
  "jsonwebtoken",
  "once_cell",
@@ -1017,6 +1019,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -2213,6 +2216,12 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "uuid"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93d59ca99a559661b96bf898d8fce28ed87935fd2bea9f05983c1464dd6c71b1"
 
 [[package]]
 name = "valuable"

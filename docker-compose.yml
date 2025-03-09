@@ -1,7 +1,8 @@
+version: "3.8"
+
 services:
   db:
-    image: postgres:16 # Use a fixed version for stability
-    container_name: metaverse_postgres
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: anjal
@@ -9,12 +10,26 @@ services:
       POSTGRES_DB: metaverse_postgres
     ports:
       - "5432:5432"
+    networks:
+      - my_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "anjal"]
-      interval: 10s
-      retries: 5
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.migration
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgres://anjal:dbpass@db:5432/metaverse_postgres"
+    entrypoint: ["/app/wait-for-it.sh", "db:5432", "--"]
+    command: ["sqlx", "migrate", "run"]
+    networks:
+      - my_network
 
 volumes:
   postgres_data:
+
+networks:
+  my_network:

@@ -1,17 +1,22 @@
 use axum::middleware;
-use axum::{Router, routing::post};
+use axum::{Router, routing::get, routing::post};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
-mod auth_middleware;
-mod common;
-mod user;
-use auth_middleware::auth_middleware;
-use common::signin;
-use common::signup;
 use tracing::{Level, info};
 use tracing_subscriber::FmtSubscriber;
-use user::metadata;
+
+mod auth_middleware;
+mod common;
+mod space;
+mod space_middleware;
+mod user;
+
+use auth_middleware::auth_middleware;
+use common::{signin, signup};
+use space::create_space;
+use space_middleware::space_middleware;
+use user::{create_avatar, get_avatars, get_metadata_bulk, metadata};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,24 +45,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let common_routes = Router::new()
         .route("/signin", post(signin))
         .route("/signup", post(signup))
-        // .route("/avatars", get(get_avatars))
+        .route("/create_avatar", post(create_avatar))
         .with_state(pool.clone());
 
     let user_routes = Router::new()
         .route("/metadata", post(metadata))
         .layer(middleware::from_fn(auth_middleware))
-        // .route("/metadata/bulk", get(metadata_bulk))
+        .route("/avatars", get(get_avatars))
+        .route("/metadata/bulk", post(get_metadata_bulk))
+        .with_state(pool.clone());
+
+    let space_routes = Router::new()
+        .route("/create", post(create_space))
+        .layer(middleware::from_fn(auth_middleware))
+        .layer(middleware::from_fn(space_middleware))
         .with_state(pool.clone());
 
     let api_routes = Router::new()
         .nest("/common", common_routes)
-        .nest("/user", user_routes);
-    // .nest("/space", space_routes)
+        .nest("/user", user_routes)
+        .nest("/space", space_routes);
     // .nest("/admin", admin_routes)
 
     let app = Router::new().nest("/api/v1/", api_routes);
 
-    // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
