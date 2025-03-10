@@ -1,5 +1,5 @@
 use axum::middleware;
-use axum::{Router, routing::get, routing::post};
+use axum::{Router, routing::get, routing::post, routing::put};
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
@@ -8,13 +8,16 @@ use tracing_subscriber::FmtSubscriber;
 
 mod auth_middleware;
 mod common;
+mod element;
+mod maps;
 mod space;
 mod space_middleware;
 mod user;
 
 use auth_middleware::auth_middleware;
 use common::{signin, signup};
-use space::create_space;
+use maps::{create_map, get_map, get_maps};
+use space::{create_space, delete_space, get_all_spaces};
 use space_middleware::space_middleware;
 use user::{create_avatar, get_avatars, get_metadata_bulk, metadata};
 
@@ -59,12 +62,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/create", post(create_space))
         .layer(middleware::from_fn(auth_middleware))
         .layer(middleware::from_fn(space_middleware))
+        .route("/get_all_spaces", post(get_all_spaces))
+        .route("/delete_space", post(delete_space))
+        .with_state(pool.clone());
+
+    let map_routes = Router::new()
+        .route("/create", post(create_map))
+        .route("/get_map", post(get_map))
+        .route("/get_maps", post(get_maps))
+        .layer(middleware::from_fn(auth_middleware))
+        .with_state(pool.clone());
+
+    let element_routes = Router::new()
+        .route("/create", post(create_element))
+        .route("/add", post(add_element))
+        .route("/delete", post(delete_element))
+        .route("/update", put(update_element))
         .with_state(pool.clone());
 
     let api_routes = Router::new()
         .nest("/common", common_routes)
         .nest("/user", user_routes)
-        .nest("/space", space_routes);
+        .nest("/space", space_routes)
+        .nest("/element", element_routes)
+        .nest("/map", map_routes);
+
     // .nest("/admin", admin_routes)
 
     let app = Router::new().nest("/api/v1/", api_routes);

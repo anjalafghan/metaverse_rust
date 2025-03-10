@@ -53,9 +53,9 @@ struct GetSpace {
     thumbnail: String,
 }
 
-pub async fn get_all_space(
+pub async fn get_all_spaces(
     State(pool): State<Arc<sqlx::PgPool>>,
-) -> Result<GetAllSpaceResponse, StatusCode> {
+) -> Result<Json<GetAllSpaceResponse>, StatusCode> {
     let response = sqlx::query("SELECT id, name, width, height, thumbnail FROM spaces")
         .fetch_all(&*pool)
         .await;
@@ -72,7 +72,7 @@ pub async fn get_all_space(
                     thumbnail: row.get("thumbnail"),
                 })
                 .collect();
-            Ok(GetAllSpaceResponse { spaces })
+            Ok(Json(GetAllSpaceResponse { spaces }))
         }
         Err(e) => {
             error!("Error in getting all spaces: {}", e);
@@ -81,12 +81,17 @@ pub async fn get_all_space(
     }
 }
 
+#[derive(Deserialize)]
+pub struct DeleteSpacePayload {
+    space_id: i32,
+}
+
 pub async fn delete_space(
     State(pool): State<Arc<sqlx::PgPool>>,
-    space_id: i32,
+    Json(payload): Json<DeleteSpacePayload>,
 ) -> Result<StatusCode, StatusCode> {
     let response = sqlx::query("DELETE FROM spaces WHERE space_id is $1")
-        .bind(space_id)
+        .bind(payload.space_id)
         .execute(&*pool)
         .await;
     match response {

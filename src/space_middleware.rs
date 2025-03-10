@@ -11,7 +11,7 @@ pub struct CreateSpacePayload {
     pub name: String,
     pub width: i32,
     pub height: Option<i32>,
-    pub map_id: Option<String>,
+    pub map_id: Option<i32>,
 }
 
 pub async fn space_middleware(
