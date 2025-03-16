@@ -110,7 +110,7 @@ pub async fn signup(
     };
     info!(
         "Inserting user: username={}, email={} password={}, avatar_id={:?}, role={}",
-        payload.username, payload.email, payload.password, payload.avatar_id, role_str
+        payload.username, payload.email_id, payload.password, payload.avatar_id, role_str
     );
 
     let response = sqlx::query(
