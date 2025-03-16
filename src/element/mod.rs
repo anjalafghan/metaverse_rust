@@ -1,11 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
-use serde::{Deserialize, Serialize};
-use sqlx::{self, PgPool, Row, postgres::PgRow, query, query_as};
+use sqlx::{self};
 use std::sync::Arc;
 use tracing::error;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct CreateElementPayload {
+    id: String,
     image_url: String,
     width: i32,
     height: i32,
@@ -17,8 +17,9 @@ pub async fn create_element(
     Json(payload): Json<CreateElementPayload>,
 ) -> Result<StatusCode, StatusCode> {
     let response = sqlx::query(
-        "INSERT INTO elements (image_url, width, height, is_static) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO elements (id, image_url, x, y, is_static) VALUES ($1, $2, $3, $4, $5)",
     )
+    .bind(payload.id)
     .bind(payload.image_url)
     .bind(payload.width)
     .bind(payload.height)
@@ -35,6 +36,7 @@ pub async fn create_element(
     }
 }
 
+#[derive(serde::Deserialize)]
 pub struct UpdateElementPayload {
     image_url: String,
     element_id: i32,
@@ -59,6 +61,7 @@ pub async fn update_element(
     }
 }
 
+#[derive(serde::Deserialize)]
 pub struct AddElementPayload {
     element_id: String,
     space_id: i32,
@@ -87,3 +90,10 @@ pub async fn add_element(
         }
     }
 }
+
+// pub async fn delete_element(
+//     State(pool): State<Arc<sqlx::PgPool>>,
+//     space_id: i32,
+// ) -> Result<StatusCode, StatusCode> {
+//     todo!()
+// }

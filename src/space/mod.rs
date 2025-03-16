@@ -21,7 +21,7 @@ pub async fn create_space(
     Json(payload): Json<CreateSpacePayload>,
 ) -> Result<Json<CreateSpaceResponse>, StatusCode> {
     let result = sqlx::query_scalar!(
-        "INSERT INTO space (name, width, height, map_id) VALUES ($1, $2, $3, $4) RETURNING id",
+        "INSERT INTO spaces (name, width, height, map_id) VALUES ($1, $2, $3, $4) RETURNING id",
         payload.name,
         payload.width,
         payload.height,

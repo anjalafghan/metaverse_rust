@@ -29,6 +29,7 @@ pub enum Role {
 #[derive(Deserialize)]
 pub struct SignUpPayload {
     username: String,
+    email_id: String,
     password: String,
     avatar_id: Option<i32>,
     role: Role,
@@ -45,7 +46,7 @@ pub async fn signin(
     Json(payload): Json<SignInPayload>,
 ) -> Result<Json<SignInResponse>, StatusCode> {
     let response = sqlx::query!(
-        "SELECT id, username, password FROM users WHERE username = $1",
+        "SELECT id, username, password_hash FROM users WHERE username = $1",
         payload.username
     )
     .fetch_one(&*pool)
@@ -53,7 +54,9 @@ pub async fn signin(
 
     match response {
         Ok(record) => {
-            if record.username == payload.username && record.password == payload.password {
+            let password_matches =
+                bcrypt::verify(&payload.password, &record.password_hash).unwrap_or(false);
+            if password_matches {
                 static SECRET_KEY: Lazy<Vec<u8>> = Lazy::new(|| {
                     dotenv().ok();
                     env::var("SECRET_KEY_JWT")
@@ -73,6 +76,13 @@ pub async fn signin(
                 )
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+                let _ = sqlx::query!(
+                    "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+                    record.id
+                )
+                .execute(&*pool)
+                .await;
+
                 Ok(Json(SignInResponse { token }))
             } else {
                 Err(StatusCode::UNAUTHORIZED)
@@ -80,7 +90,7 @@ pub async fn signin(
         }
         Err(err) => {
             error!("Database error during signin: {:?}", err);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(StatusCode::UNAUTHORIZED)
         }
     }
 }
@@ -90,20 +100,25 @@ pub async fn signup(
     Json(payload): Json<SignUpPayload>,
 ) -> Result<StatusCode, StatusCode> {
     info!("User attempting to sign in: {}", payload.username);
+
+    let password_hash = bcrypt::hash(&payload.password, bcrypt::DEFAULT_COST)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     let role_str = match payload.role {
         Role::User => "User",
         Role::Admin => "Admin",
     };
     info!(
-        "Inserting user: username={}, password={}, avatar_id={:?}, role={}",
-        payload.username, payload.password, payload.avatar_id, role_str
+        "Inserting user: username={}, email={} password={}, avatar_id={:?}, role={}",
+        payload.username, payload.email, payload.password, payload.avatar_id, role_str
     );
 
     let response = sqlx::query(
-        "INSERT INTO users (username, password, avatar_id, role) VALUES ($1, $2, $3, $4::role_enum)",
+        "INSERT INTO users (username, email,  password, avatar_id, role) VALUES ($1, $2, $3, $4::role_enum)",
     )
     .bind(&payload.username)
-    .bind(&payload.password)
+    .bind(&payload.email_id)
+    .bind(password_hash)
     .bind(payload.avatar_id)
     .bind(role_str)
     .execute(&*pool)
