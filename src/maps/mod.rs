@@ -61,34 +61,34 @@ pub struct GetMapsResponse {
     name: String,
 }
 
-pub async fn get_map(
-    State(pool): State<Arc<sqlx::PgPool>>,
-    Json(payload): Json<GetMapPayload>,
-) -> Result<Json<GetMapsResponse>, StatusCode> {
-    let response = sqlx::query!(
-        "SELECT id, height, width, name FROM maps WHERE id= $1",
-        payload.id
-    )
-    .fetch_one(&*pool)
-    .await;
-    match response {
-        Ok(res) => {
-            let name: String;
-            match res.name {
-                Some(n) => name = n,
-                None => name = String::from("None"),
-            }
+// pub async fn get_map(
+//     State(pool): State<Arc<sqlx::PgPool>>,
+//     Json(payload): Json<GetMapPayload>,
+// ) -> Result<Json<GetMapsResponse>, StatusCode> {
+//     let response = sqlx::query!(
+//         "SELECT id, height, width, name FROM maps WHERE id= $1",
+//         payload.id
+//     )
+//     .fetch_one(&*pool)
+//     .await;
+//     match response {
+//         Ok(res) => {
+//             let name: String;
+//             match res.name {
+//                 Some(n) => name = n,
+//                 None => name = String::from("None"),
+//             }
 
-            Ok(Json(GetMapsResponse {
-                id: res.id,
-                width: res.width,
-                height: res.height,
-                name,
-            }))
-        }
-        Err(e) => Err(StatusCode::BAD_REQUEST),
-    }
-}
+//             Ok(Json(GetMapsResponse {
+//                 id: res.id,
+//                 width: res.width,
+//                 height: res.height,
+//                 name,
+//             }))
+//         }
+//         Err(e) => Err(StatusCode::BAD_REQUEST),
+//     }
+// }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct GetMapsFinalResponse {

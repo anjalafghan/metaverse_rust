@@ -39,6 +39,7 @@ pub struct SignUpPayload {
 struct Claims {
     sub: String,
     exp: usize,
+    role: String,
 }
 
 pub async fn signin(
@@ -46,7 +47,7 @@ pub async fn signin(
     Json(payload): Json<SignInPayload>,
 ) -> Result<Json<SignInResponse>, StatusCode> {
     let response = sqlx::query!(
-        "SELECT id, username, password_hash FROM users WHERE username = $1",
+        "SELECT id, username, password_hash, role::TEXT FROM users WHERE username = $1",
         payload.username
     )
     .fetch_one(&*pool)
@@ -68,6 +69,7 @@ pub async fn signin(
                 let claims = Claims {
                     sub: record.id.to_string(),
                     exp: expiration.timestamp() as usize,
+                    role: record.role.unwrap_or_else(|| "user".to_string()),
                 };
                 let token = encode(
                     &Header::default(),
@@ -114,7 +116,7 @@ pub async fn signup(
     );
 
     let response = sqlx::query(
-        "INSERT INTO users (username, email,  password, avatar_id, role) VALUES ($1, $2, $3, $4::role_enum)",
+        "INSERT INTO users (username, email,  password_hash, avatar_id, role) VALUES ($1, $2, $3, $4, $5::role_enum)",
     )
     .bind(&payload.username)
     .bind(&payload.email_id)

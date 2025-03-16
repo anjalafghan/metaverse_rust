@@ -28,8 +28,8 @@ static SECRET_KEY: Lazy<Vec<u8>> = Lazy::new(|| {
 
 use tracing::{error, info};
 
-pub async fn auth_middleware(request: Request, next: Next) -> Result<Response<Body>, StatusCode> {
-    info!("Authenticating request...");
+pub async fn admin_middleware(request: Request, next: Next) -> Result<Response<Body>, StatusCode> {
+    info!("Starting authentication process");
 
     // Extract authorization header
     let token = match request
@@ -61,23 +61,23 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response<Bo
         }
     };
 
-    // Create an Arc<Claims> to share across middleware
-    let claims = Arc::new(token_data.claims);
+    // Get the claims
+    let claims = token_data.claims;
+    info!("Retrieved claims: {:?}", claims);
+
+    // Check if user is admin
+    if claims.role != "Admin" {
+        error!("User is not an admin, role: {}", claims.role);
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    info!("Admin authentication successful");
 
     // Create a new request with the claims in the extensions
     let (mut parts, body) = request.into_parts();
-    parts.extensions.insert(claims.clone());
+    parts.extensions.insert(Arc::new(claims));
     let new_request = Request::from_parts(parts, body);
 
-    // Log the claims after insertion
-    if let Some(retrieved_claims) = new_request.extensions().get::<Arc<Claims>>() {
-        info!("Claims after insertion: {:?}", retrieved_claims);
-    } else {
-        error!("Failed to retrieve claims after insertion");
-    }
-
-    info!("Authentication successful, proceeding to next middleware...");
-
-    // Pass the new request to the next middleware
+    // Pass the new request to the next middleware/handler
     Ok(next.run(new_request).await)
 }
