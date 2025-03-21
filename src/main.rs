@@ -56,9 +56,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let user_routes = Router::new()
         .route("/metadata", post(metadata))
-        .layer(middleware::from_fn(auth_middleware))
         .route("/avatars", get(get_avatars))
         .route("/metadata/bulk", post(get_metadata_bulk))
+        .layer(middleware::from_fn(auth_middleware))
         .with_state(pool.clone());
 
     // let space_routes = Router::new()
