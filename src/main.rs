@@ -1,11 +1,11 @@
-use axum::middleware;
-use axum::{Router, routing::get, routing::post, routing::put};
+use axum::{Router, middleware, routing::get, routing::post, routing::put};
 use dotenv::dotenv;
+use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tracing::{Level, info};
 use tracing_subscriber::FmtSubscriber;
-
+use worlds::create_world::{self, create_world};
 mod admin_middleware;
 mod auth_middleware;
 mod common;
@@ -14,7 +14,7 @@ mod maps;
 mod space;
 mod space_middleware;
 mod user;
-
+mod worlds;
 use admin_middleware::admin_middleware;
 use auth_middleware::auth_middleware;
 use common::{signin, signup};
@@ -50,8 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let common_routes = Router::new()
         .route("/signin", post(signin))
         .route("/signup", post(signup))
-        .route("/create_avatar", post(create_avatar))
-        .layer(middleware::from_fn(admin_middleware))
+        .route(
+            "/create_avatar",
+            post(create_avatar).layer(middleware::from_fn(admin_middleware)), // Middleware applied only here
+        )
         .with_state(pool.clone());
 
     let user_routes = Router::new()
@@ -59,6 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/avatars", get(get_avatars))
         .route("/metadata/bulk", post(get_metadata_bulk))
         .layer(middleware::from_fn(auth_middleware))
+        .with_state(pool.clone());
+
+    let world_routes = Router::new()
+        .route("/create", post(create_world))
+        .layer(middleware::from_fn(admin_middleware))
         .with_state(pool.clone());
 
     // let space_routes = Router::new()
@@ -85,7 +92,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let api_routes = Router::new()
         .nest("/common", common_routes)
-        .nest("/user", user_routes);
+        .nest("/user", user_routes)
+        .nest("/worlds", world_routes);
     // .nest("/space", space_routes)
     // .nest("/element", element_routes)
     // .nest("/map", map_routes);
