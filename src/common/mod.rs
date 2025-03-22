@@ -4,7 +4,6 @@ use dotenv::dotenv;
 use jsonwebtoken::{EncodingKey, Header, encode};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use sqlx::Row;
 use std::{env, sync::Arc};
 use tracing::{error, info};
 
@@ -37,7 +36,7 @@ pub struct SignUpPayload {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Claims {
-    sub: String,
+    sub: i32,
     exp: usize,
     role: String,
 }
@@ -67,7 +66,7 @@ pub async fn signin(
 
                 let expiration = Utc::now() + Duration::hours(24);
                 let claims = Claims {
-                    sub: record.id.to_string(),
+                    sub: record.id,
                     exp: expiration.timestamp() as usize,
                     role: record.role.unwrap_or_else(|| "user".to_string()),
                 };
