@@ -1,8 +1,10 @@
 use axum::{Json, extract::State, http::StatusCode};
+pub mod create_maps;
 use serde::{Deserialize, Serialize};
 use sqlx::{self, Row, postgres::PgRow, query, query_as};
 use std::sync::Arc;
 use tracing::error;
+pub mod get_map;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CreateSpaceResponse {
@@ -24,28 +26,6 @@ pub struct CreateSpacePayload {
     pub height: Option<i32>,
     pub map_id: Option<i32>,
     pub default_elements: Vec<DefaultElements>,
-}
-pub async fn create_map(
-    State(pool): State<Arc<sqlx::PgPool>>,
-    Json(payload): Json<CreateSpacePayload>,
-) -> Result<Json<CreateSpaceResponse>, StatusCode> {
-    let result = sqlx::query_scalar!(
-        "INSERT INTO maps (id, width, height, name) VALUES ($1, $2, $3, $4) RETURNING id",
-        payload.map_id,
-        payload.width,
-        payload.height,
-        payload.name,
-    )
-    .fetch_one(&*pool)
-    .await;
-
-    match result {
-        Ok(space_id) => Ok(Json(CreateSpaceResponse { space_id })),
-        Err(e) => {
-            error!("Error creating space: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
