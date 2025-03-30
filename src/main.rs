@@ -1,8 +1,7 @@
-use axum::{Router, middleware, routing::get, routing::post, routing::put};
+use axum::{Router, middleware, routing::get, routing::post};
 use dotenv::dotenv;
 use maps::{create_maps::create_map, get_map::get_map};
 use space::{create_space::create_space, delete_space::delete_space, get_space::get_space};
-use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use std::{env, sync::Arc};
 use tracing::{Level, info};
@@ -14,17 +13,15 @@ mod common;
 mod element;
 mod maps;
 mod space;
-mod space_middleware;
 mod user;
 mod worlds;
 use admin_middleware::admin_middleware;
 use auth_middleware::auth_middleware;
 use common::{signin, signup};
-use element::{add_element, create_element, update_element};
-use maps::create_maps;
+use element::element_templates::create_element_template;
+use element::map_elements::create_map_elements;
+use element::space_elements::create_space_elements;
 // use maps::{create_map, get_map, get_maps};
-use space::{create_space, delete_space, get_space};
-use space_middleware::space_middleware;
 use user::{create_avatar, get_avatars, get_metadata_bulk, metadata};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -98,21 +95,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // .route("/get_maps", post(get_maps))
         .with_state(pool.clone());
 
-    // let element_routes = Router::new()
-    //     .route("/create", post(create_element))
-    //     .route("/add", post(add_element))
-    //     // .route("/delete", post(delete_element))
-    //     .route("/update", put(update_element))
-    //     .with_state(pool.clone());
+    let element_routes = Router::new()
+        .route("/create_new_element", post(create_element_template))
+        .route("/create_space_element", post(create_space_elements))
+        .route("/create_map_element", post(create_map_elements))
+        .layer(middleware::from_fn(admin_middleware))
+        .with_state(pool.clone());
 
     let api_routes = Router::new()
         .nest("/common", common_routes)
         .nest("/user", user_routes)
         .nest("/map", map_routes)
+        .nest("/element", element_routes)
         .nest("/space", space_routes)
         .nest("/worlds", world_routes);
     //
-    // .nest("/element", element_routes)
+    //
     // ;
 
     // .nest("/admin", admin_routes)

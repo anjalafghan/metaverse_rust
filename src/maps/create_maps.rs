@@ -1,6 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
-use sqlx::{self, Row, postgres::PgRow, query, query_as};
 use std::sync::Arc;
 use tracing::error;
 
