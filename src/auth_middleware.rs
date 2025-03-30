@@ -1,7 +1,7 @@
 use axum::{
     body::Body,
     extract::Request,
-    http::{HeaderMap, Response, StatusCode},
+    http::{Response, StatusCode},
     middleware::Next,
 };
 use std::sync::Arc;

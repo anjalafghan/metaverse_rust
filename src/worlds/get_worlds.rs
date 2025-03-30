@@ -1,11 +1,8 @@
-use axum::extract::Extension;
 use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use sqlx::FromRow;
 use std::sync::Arc;
 use tracing::error;
-
-use crate::admin_middleware::Claims;
 
 #[derive(Serialize, FromRow)]
 pub struct World {

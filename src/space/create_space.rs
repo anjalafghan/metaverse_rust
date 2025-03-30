@@ -1,5 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use tracing::error;
 
