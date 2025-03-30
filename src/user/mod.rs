@@ -6,7 +6,7 @@ use axum::{
     http::{Response, StatusCode},
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres, Row, query_builder};
+use sqlx::{Pool, Postgres, Row};
 use std::sync::Arc;
 use tracing::error;
 use tracing::warn;
@@ -117,7 +117,7 @@ pub async fn get_avatars(
                 })
                 .collect();
 
-            Ok(Json(AvatarResponseBody { avatars: avatars }))
+            Ok(Json(AvatarResponseBody { avatars }))
         }
         Err(e) => {
             error!("Something went wrong {}", e);

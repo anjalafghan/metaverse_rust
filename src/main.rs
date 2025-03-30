@@ -20,7 +20,7 @@ mod worlds;
 use admin_middleware::admin_middleware;
 use auth_middleware::auth_middleware;
 use common::{signin, signup};
-use element::{add_element, create_element, update_element};
+use element::element_templates::create_element_template;
 use maps::create_maps;
 // use maps::{create_map, get_map, get_maps};
 use space::{create_space, delete_space, get_space};
@@ -98,21 +98,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // .route("/get_maps", post(get_maps))
         .with_state(pool.clone());
 
-    // let element_routes = Router::new()
-    //     .route("/create", post(create_element))
-    //     .route("/add", post(add_element))
-    //     // .route("/delete", post(delete_element))
-    //     .route("/update", put(update_element))
-    //     .with_state(pool.clone());
+    let element_routes = Router::new()
+        .route(
+            "/create",
+            post(create_element_template).layer(middleware::from_fn(admin_middleware)),
+        )
+        //     .route("/add", post(add_element))
+        //     // .route("/delete", post(delete_element))
+        //     .route("/update", put(update_element))
+        .with_state(pool.clone());
 
     let api_routes = Router::new()
         .nest("/common", common_routes)
         .nest("/user", user_routes)
         .nest("/map", map_routes)
+        .nest("/element", element_routes)
         .nest("/space", space_routes)
         .nest("/worlds", world_routes);
     //
-    // .nest("/element", element_routes)
+    //
     // ;
 
     // .nest("/admin", admin_routes)
