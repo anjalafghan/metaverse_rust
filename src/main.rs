@@ -50,8 +50,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let common_routes = Router::new()
         .route("/signin", post(signin))
         .route("/signup", post(signup))
-        .route("/create_avatar", post(create_avatar))
-        .layer(middleware::from_fn(admin_middleware))
+        .route(
+            "/create_avatar",
+            post(create_avatar).layer(middleware::from_fn(admin_middleware)),
+        )
         .with_state(pool.clone());
 
     let user_routes = Router::new()
