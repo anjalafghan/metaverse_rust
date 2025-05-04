@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/signup", post(signup))
         .route(
             "/create_avatar",
-            post(create_avatar).layer(middleware::from_fn(admin_middleware)),
+            post(create_avatar).layer(middleware::from_fn(admin_middleware)), // Middleware applied only here
         )
         .with_state(pool.clone());
 
